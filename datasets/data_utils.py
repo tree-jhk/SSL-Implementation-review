@@ -21,9 +21,9 @@ def split_ssl_data(args, data, target, num_labels, num_classes, index=None, incl
     """
     data, target = np.array(data), np.array(target)
     lb_data, lbs, lb_idx, = sample_labeled_data(args, data, target, num_labels, num_classes, index)
-    ulb_idx = np.array(sorted(list(set(range(len(data))) - set(lb_idx))))  # unlabeled_data index of data
+    ulb_idx = np.array(sorted(list(set(range(len(data))) - set(lb_idx))))  # unlabeled_data index of data # labeled data로 지정한 data 제외한 너머지 data를, 모두 unlabeled data로 간주
     if include_lb_to_ulb:
-        return lb_data, lbs, data, target
+        return lb_data, lbs, data, target # lbs가 target, lb_data, lbs: 샘플링한 labeled data, data, target: unlabeled로 간주
     else:
         return lb_data, lbs, data[ulb_idx], target[ulb_idx]
 
@@ -35,7 +35,7 @@ def sample_labeled_data(args, data, target,
     samples for labeled data
     (sampling with balanced ratio over classes)
     '''
-    assert num_labels % num_classes == 0
+    assert num_labels % num_classes == 0 # 이 코드 좀 의문이네. 나머지 0이 되는게 이상한 건 아닌데
     if not index is None:
         index = np.array(index, dtype=np.int32)
         return data[index], target[index], index
@@ -54,14 +54,14 @@ def sample_labeled_data(args, data, target,
     lbs = []
     lb_idx = []
     for c in range(num_classes):
-        idx = np.where(target == c)[0]
-        idx = np.random.choice(idx, samples_per_class, False)
+        idx = np.where(target == c)[0] # 타겟에 해당하는 부분 가져옴
+        idx = np.random.choice(idx, samples_per_class, False) # 타겟에 해당하는 부분 중 랜덤으로 samples_per_class개만큼 가져옴
         lb_idx.extend(idx)
 
         lb_data.extend(data[idx])
         lbs.extend(target[idx])
 
-    np.save(dump_path, np.array(lb_idx))
+    np.save(dump_path, np.array(lb_idx)) # 라벨에 해당하는 부분을 저장(재사용하려고)
 
     return np.array(lb_data), np.array(lbs), np.array(lb_idx)
 

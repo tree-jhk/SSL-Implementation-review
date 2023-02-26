@@ -217,8 +217,9 @@ class SSL_Dataset:
         self.num_classes = num_classes
         self.data_dir = data_dir
         crop_size = 96 if self.name.upper() == 'STL10' else 224 if self.name.upper() == 'IMAGENET' else 32
-        self.transform = get_transform(mean[name], std[name], crop_size, train)
+        self.transform = get_transform(mean[name], std[name], crop_size, train) # 기본적인 이미지 augmentation
 
+# 데이터 불러오는 코드임. 이 부분의 return부만 동일하게 하고, 나머지는 내 데이터를 load할 수 있도록 변경해야할 듯
     def get_data(self, svhn_extra=True):
         """
         get_data returns data (images) and targets (labels)
@@ -294,15 +295,15 @@ class SSL_Dataset:
             BasicDataset (for labeled data), BasicDataset (for unlabeld data)
         """
         # Supervised top line using all data as labeled data.
-        if self.alg == 'fullysupervised':
+        if self.alg == 'fullysupervised': # SSL 안 쓰는 경우 (지도학습)
             lb_data, lb_targets = self.get_data()
             lb_dset = BasicDataset(self.alg, lb_data, lb_targets, self.num_classes,
                                    self.transform, False, None, onehot)
             return lb_dset, None
-
-        if self.name.upper() == 'STL10':
+        
+        if self.name.upper() == 'STL10': # 나같은 경우, 이 부분의 코드 스타일로 내 데이터를 적용해야함
             lb_data, lb_targets, ulb_data = self.get_data()
-            if include_lb_to_ulb:
+            if include_lb_to_ulb: # labeled data에도 augmentation 적용할지
                 ulb_data = np.concatenate([ulb_data, lb_data], axis=0)
             lb_data, lb_targets, _ = sample_labeled_data(self.args, lb_data, lb_targets, num_labels, self.num_classes)
             ulb_targets = None
@@ -314,17 +315,17 @@ class SSL_Dataset:
         # output the distribution of labeled data for remixmatch
         count = [0 for _ in range(self.num_classes)]
         for c in lb_targets:
-            count[c] += 1
+            count[c] += 1 # 타겟별로 얼마나 있는지 세기 위함
         dist = np.array(count, dtype=float)
         dist = dist / dist.sum()
         dist = dist.tolist()
-        out = {"distribution": dist}
+        out = {"distribution": dist} # 샘플링된 labeled data의 label들의 분포(불균형한 데이터인지 확인 가능) (우연히 한 쪽 라벨이 샘플링 때문에 불균형할 수 있음)
         output_file = r"./data_statistics/"
         output_path = output_file + str(self.name) + '_' + str(num_labels) + '.json'
         if not os.path.exists(output_file):
             os.makedirs(output_file, exist_ok=True)
         with open(output_path, 'w') as w:
-            json.dump(out, w)
+            json.dump(out, w) # json형으로 out을 저장
         # print(Counter(ulb_targets.tolist()))
         lb_dset = BasicDataset(self.alg, lb_data, lb_targets, self.num_classes,
                                self.transform, False, None, onehot)

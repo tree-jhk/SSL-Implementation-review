@@ -43,14 +43,15 @@ class BasicDataset(Dataset):
         self.targets = targets
 
         self.num_classes = num_classes
-        self.is_ulb = is_ulb
+        self.is_ulb = is_ulb # 데이터셋이 labeled인지 unlabeled인지
         self.onehot = onehot
 
         self.transform = transform
         if self.is_ulb:
             if strong_transform is None:
                 self.strong_transform = copy.deepcopy(transform)
-                self.strong_transform.transforms.insert(0, RandAugment(3, 5))
+# unlabled data에 대해서는 k번의 random한 augmentation이 들어가는 코드
+                self.strong_transform.transforms.insert(0, RandAugment(3, 5)) # (3, 5)에서 3만 실제로 쓰이고, 3이 곧 k번의 augmentation을 의미함.
         else:
             self.strong_transform = strong_transform
 
@@ -67,24 +68,24 @@ class BasicDataset(Dataset):
             target = None
         else:
             target_ = self.targets[idx]
-            target = target_ if not self.onehot else get_onehot(self.num_classes, target_)
+            target = target_ if not self.onehot else get_onehot(self.num_classes, target_) # target을 onehot으로 만들지
 
         # set augmented images
 
         img = self.data[idx]
         if self.transform is None:
             return transforms.ToTensor()(img), target
-        else:
+        else: # mixmatch, fixmatch, flextmatch 모두 transform을 필요로 함.
             if isinstance(img, np.ndarray):
-                img = Image.fromarray(img)
+                img = Image.fromarray(img) # numpy 배열로 되어있는 이미지 배열을 PIL 이미지로 변환
             img_w = self.transform(img)
-            if not self.is_ulb:
-                return idx, img_w, target
+            if not self.is_ulb: # 데이터셋이 labeled data이면
+                return idx, img_w, target # idx, img_w, target == 이미지의 index, augmented 이미지, 라벨
             else:
                 if self.alg == 'fixmatch':
                     return idx, img_w, self.strong_transform(img)
                 elif self.alg == 'flexmatch':
-                    return idx, img_w, self.strong_transform(img)
+                    return idx, img_w, self.strong_transform(img) # idx, img_w, self.strong_transform(img) == 이미지의 index, augmented 이미지, strongly augmented 이미지,
                 elif self.alg == 'softmatch' or self.alg == 'freematch' or self.alg == 'freematch_entropy':
                     return idx, img_w, self.strong_transform(img)
                 elif self.alg == 'pimodel':
@@ -98,7 +99,7 @@ class BasicDataset(Dataset):
                 elif self.alg == 'uda':
                     return idx, img_w, self.strong_transform(img)
                 elif self.alg == 'mixmatch':
-                    return idx, img_w, self.transform(img)
+                    return idx, img_w, self.transform(img) # idx, img_w, self.transform(img) == 이미지의 index, augmented 이미지, augmented 이미지 -> img_x와 self.transform(img) 다를 수 있음 왜냐면 aumgentation이 random하게 적용되기 때문에.
                 elif self.alg == 'remixmatch':
                     rotate_v_list = [0, 90, 180, 270]
                     rotate_v1 = np.random.choice(rotate_v_list, 1).item()
