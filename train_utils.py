@@ -301,6 +301,7 @@ def ce_loss(logits, targets, use_hard_labels=True, reduction='none'):
         targets: integer or vector, shape=[Batch size] or [Batch size, # of classes]
         use_hard_labels: If True, targets have [Batch size] shape with int values. If False, the target is vector (default True)
     """
+    # targets: n개의 클래스에 대한 logit값들
     if use_hard_labels:
         log_pred = F.log_softmax(logits, dim=-1)
         return F.nll_loss(log_pred, targets, reduction=reduction)

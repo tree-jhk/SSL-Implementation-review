@@ -20,14 +20,15 @@ def one_hot(targets, nClass, gpu):
     return logits.scatter_(1, targets.unsqueeze(1), 1)
 
 
+# x, y: inputs, input_labels
 def mixup_one_target(x, y, gpu, alpha=1.0, is_bias=False):
     """Returns mixed inputs, mixed targets, and lambda
     """
-    if alpha > 0:
+    if alpha > 0: # 베타 분포로 확률값 추출
         lam = np.random.beta(alpha, alpha)
     else:
         lam = 1
-    if is_bias:
+    if is_bias: # 람다 프라임
         lam = max(lam, 1 - lam)
 
     index = torch.randperm(x.size(0)).cuda(gpu)
