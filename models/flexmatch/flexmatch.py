@@ -53,7 +53,7 @@ class FlexMatch:
         self.ema_model = None
 
         self.num_eval_iter = num_eval_iter
-        self.t_fn = Get_Scalar(T)  # temperature params function
+        self.t_fn = Get_Scalar(T)  # temperature params function # T값 그대로 반환
         self.p_fn = Get_Scalar(p_cutoff)  # confidence cutoff function
         self.lambda_u = lambda_u
         self.tb_log = tb_log
@@ -86,7 +86,7 @@ class FlexMatch:
         # EMA Init
         self.model.train()
         self.ema = EMA(self.model, self.ema_m)
-        self.ema.register()
+        self.ema.register() # model의 파라미터들(model.named_parameters())을 dict로 저장
         if args.resume == True:
             self.ema.load(self.ema_model)
 
@@ -104,12 +104,14 @@ class FlexMatch:
         p_model = None
 
         # for gpu profiling
+        # Pytorch 에서 CUDA 호출이 비동기식이기 때문에 
+        # 타이머를 시작 또는 중지 하기 전에 torch.cuda.synchronize() 를 통해 코드를 동기화 시켜주어야 한다. 
         start_batch = torch.cuda.Event(enable_timing=True)
         end_batch = torch.cuda.Event(enable_timing=True)
         start_run = torch.cuda.Event(enable_timing=True)
         end_run = torch.cuda.Event(enable_timing=True)
 
-        start_batch.record()
+        start_batch.record() # 시간 기록 시작
         best_eval_acc, best_it = 0.0, 0
 
         scaler = GradScaler()
@@ -310,16 +312,21 @@ class FlexMatch:
         self.it = checkpoint['it']
         self.print_fn('model loaded')
 
+    # batch: num_lb, 
+    # nu == len(xy) - 1 == mixed_x // num_lb - 1 == 길이가 num_lb인 토막들의 수 (마지막 토막은 num_lb보다 작을 수 있음)
     def interleave_offsets(self, batch, nu):
-        groups = [batch // (nu + 1)] * (nu + 1)
+        groups = [batch // (nu + 1)] * (nu + 1) # 마지막 토막이 num_lb보다 작을 수 있는데, 그거 다 채웠을 때의 크기를 담은 list
         for x in range(batch - sum(groups)):
             groups[-x - 1] += 1
         offsets = [0]
         for g in groups:
             offsets.append(offsets[-1] + g)
         assert offsets[-1] == batch
-        return offsets
+        return offsets # [0, batch // (nu + 1), batch // (nu + 1) * 2, ..., batch // (nu + 1) * len(nu + 1)]
 
+    # xy: mixed_x의 토막들, batch: num_lb
+    # len(xy) == mixed_x // num_lb
+    # len(xy) - 1 == 길이가 num_lb인 토막들의 수 (마지막 토막은 num_lb보다 작을 수 있음)
     def interleave(self, xy, batch):
         nu = len(xy) - 1
         offsets = self.interleave_offsets(batch, nu)
